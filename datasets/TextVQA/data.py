@@ -5,6 +5,14 @@ class TextVQA(Dataset):
   def __init__(self, valJson):
     """
     valJson: path to json file containing annotations
+    
+    returns:
+    1. question id
+    2. image_id
+    3. question (str)
+    4. answers (list of strings, multiple possible answers)
+    5. question tokens (list of words of question)
+    6. image (nxm dimensional numpy array)
     """
     file_ = open(valJson)
 
