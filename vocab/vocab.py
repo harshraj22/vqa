@@ -17,7 +17,7 @@ class Vocab():
         self.num_sentences = 0
         self.longest_sentence = 0 # all the sentences with length less then this will be padded using the token PAD
 
-    def add_word(self, word):
+  def add_word(self, word):
         if word not in self.word2index:
             self.word2index[word] = self.num_words
             self.word2count[word] = 1
@@ -26,7 +26,7 @@ class Vocab():
         else: # word2count stores the total tokens in the corpus
             self.word2count[word] += 1
             
-    def add_sentence(self, sentence):
+  def add_sentence(self, sentence):
         sentence_len = 0
         for word in sentence.split(' '):
             sentence_len += 1
@@ -35,8 +35,8 @@ class Vocab():
             self.longest_sentence = sentence_len
         self.num_sentences += 1
 
-    def to_word(self, index): # lookup table 
+  def to_word(self, index): # lookup table 
         return self.index2word[index]
 
-    def to_index(self, word): # lookup table 
+  def to_index(self, word): # lookup table 
         return self.word2index[word]
