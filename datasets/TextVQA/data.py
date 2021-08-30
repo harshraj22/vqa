@@ -1,5 +1,6 @@
 from torch.utils.data import Dataset
 import cv2, wget 
+import json
 
 class TextVQA(Dataset):
   def __init__(self, valJson):
