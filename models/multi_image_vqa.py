@@ -25,16 +25,21 @@ class MultiImageVQA(nn.Module):
         img2 = img_dict['img2']
 
         img1 = self.img_enc(img1)
+        img1 = torch.clamp(img1, min=-1, max=-0.5)
         img2 = self.img_enc(img2)
-        ques = self.ques_enc(ques).squeeze(0)
+        img2 = torch.clamp(img2, min=-1, max=-0.5)
+        ques = torch.unsqueeze(self.ques_enc(ques), dim=0)
+        # ques = torch.clamp(ques, min=-1, max=-0.5)
         
         # Try Normalizing
-        print(f'Before Attention: {img1.shape}, {img2.shape}, {ques.shape}\n\n')
+        # print(f'\nShapes: {ques.shape}, {torch.unsqueeze(ques, dim=0).shape}')
+        print(f'\n\nBefore Attention: {img1.shape}, {img2.shape}, Ques: {ques.shape}, Image.max: {torch.max(img1)}, question.max: {torch.max(ques)}\n\n')
         img1, weights1 = self.att1(ques, img1, img1)
         img2, weights2 = self.att1(ques, img2, img2)
         
-        img = torch.stack([img1, img2])
-        ans = self.att2(ques, img, img)
+        img = torch.stack([img1, img2]).squeeze(2)
+        print(f'Before Att2: {img.shape}\n')
+        ans, weights3 = self.att2(ques, img, img)
         return self.pred(ans)
 
 
