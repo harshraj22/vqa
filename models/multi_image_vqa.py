@@ -28,7 +28,7 @@ class MultiImageVQA(nn.Module):
         img1 = torch.clamp(img1, min=-1, max=-0.5)
         img2 = self.img_enc(img2)
         img2 = torch.clamp(img2, min=-1, max=-0.5)
-        ques = torch.unsqueeze(self.ques_enc(ques), dim=0)
+        ques = torch.unsqueeze(self.ques_enc(ques), dim=1)
         # ques = torch.clamp(ques, min=-1, max=-0.5)
         
         # Try Normalizing
@@ -53,11 +53,11 @@ if __name__ == '__main__':
     batch_size = 10
 
     img_dict = {
-        'img1': torch.randint(255, size=(1, 3, 448, 448)) / 255,
-        'img2': torch.randint(255, size=(1, 3, 448, 448)) / 255
+        'img1': torch.randint(255, size=(2, 3, 448, 448)) / 255,
+        'img2': torch.randint(255, size=(2, 3, 448, 448)) / 255
     }
 
-    ques = torch.randint(1000, size=(1, 5))
+    ques = torch.randint(1000, size=(2, 5))
     model = MultiImageVQA(feat_dim, vocab_size, embed_size, n_attention_stacks, hidden_dim_img)
 
     out = model(img_dict, ques)
