@@ -1,8 +1,14 @@
 import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader
+
+import sys
+sys.path.append("..")
 
 from image_encoder import ImageEncoder
 from question_encoder import QuestionEncoder
+from utils.dataset import MultiImageVQADataset
+
 
 class MultiImageVQA(nn.Module):
     def __init__(self, feat_dim, vocab_size, embed_size, n_attention_stacks, hidden_dim_img, n_images=2):
@@ -32,7 +38,6 @@ class MultiImageVQA(nn.Module):
         # ques = torch.clamp(ques, min=-1, max=-0.5)
         
         # Try Normalizing
-        # print(f'\nShapes: {ques.shape}, {torch.unsqueeze(ques, dim=0).shape}')
         print(f'\n\nBefore Attention: {img1.shape}, {img2.shape}, Ques: {ques.shape}, Image.max: {torch.max(img1)}, question.max: {torch.max(ques)}\n\n')
         img1, weights1 = self.att1(ques, img1, img1)
         img2, weights2 = self.att1(ques, img2, img2)
@@ -60,5 +65,14 @@ if __name__ == '__main__':
     ques = torch.randint(1000, size=(2, 5))
     model = MultiImageVQA(feat_dim, vocab_size, embed_size, n_attention_stacks, hidden_dim_img)
 
-    out = model(img_dict, ques)
-    print(out.shape)
+    # out = model(img_dict, ques)
+    ds = MultiImageVQADataset()
+    dl = DataLoader(ds, batch_size=1)
+    # dct = ds[0]
+    for dct in dl:
+        for key, val in dct.items():
+            print(f'{key}: {val.shape}', end = ' ')
+        print()
+        out = model(dct, dct['ques'])
+    
+    # print(out.shape)
