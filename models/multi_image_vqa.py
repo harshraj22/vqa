@@ -77,7 +77,7 @@ if __name__ == '__main__':
 
     # out = model(img_dict, ques)
     ds = MultiImageVQADataset()
-    dl = DataLoader(ds, batch_size=1)
+    dl = DataLoader(ds, batch_size=2)
     # dct = ds[0]
     for dct in dl:
         # for key, val in dct.items():

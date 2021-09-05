@@ -9,7 +9,7 @@ class MultiImageVQADataset(Dataset):
 
 
     def __len__(self):
-        return 20
+        return 10
 
     def __getitem__(self, idx):
         dct = {
@@ -18,4 +18,5 @@ class MultiImageVQADataset(Dataset):
 
         batch_size, seq_len = 1, 5
         dct['ques'] = torch.randint(1000, size=(seq_len,))
+        dct['ans'] = torch.randint(9000-2, size=(1,))
         return dct
