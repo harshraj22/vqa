@@ -27,23 +27,35 @@ class MultiImageVQA(nn.Module):
 
 
     def forward(self, img_dict, ques):
-        img1 = img_dict['img1']
-        img2 = img_dict['img2']
+        images = [value for key, value in img_dict.items() if key.startswith('img')]
+        # print('Num Images: ', len(images))
+        # img1 = img_dict['img1']
+        # img2 = img_dict['img2']
+        images_enc = []
+        for image in images:
+            image = self.img_enc(image)
+            image = torch.clamp(image, min=-1, max=-0.5)
+            images_enc.append(image)
 
-        img1 = self.img_enc(img1)
-        img1 = torch.clamp(img1, min=-1, max=-0.5)
-        img2 = self.img_enc(img2)
-        img2 = torch.clamp(img2, min=-1, max=-0.5)
+        # img1 = self.img_enc(img1)
+        # img1 = torch.clamp(img1, min=-1, max=-0.5)
+        # img2 = self.img_enc(img2)
+        # img2 = torch.clamp(img2, min=-1, max=-0.5)
         ques = torch.unsqueeze(self.ques_enc(ques), dim=1)
         # ques = torch.clamp(ques, min=-1, max=-0.5)
         
         # Try Normalizing
-        print(f'\n\nBefore Attention: {img1.shape}, {img2.shape}, Ques: {ques.shape}, Image.max: {torch.max(img1)}, question.max: {torch.max(ques)}\n\n')
-        img1, weights1 = self.att1(ques, img1, img1)
-        img2, weights2 = self.att1(ques, img2, img2)
+        # print(f'\n\nBefore Attention: {img1.shape}, {img2.shape}, Ques: {ques.shape}, Image.max: {torch.max(img1)}, question.max: {torch.max(ques)}\n\n')
+        images_att = []
+        for image in images_enc:
+            image, weight = self.att1(ques, image, image)
+            images_att.append((image, weight))
+
+        # img1, weights1 = self.att1(ques, img1, img1)
+        # img2, weights2 = self.att1(ques, img2, img2)
         
-        img = torch.stack([img1, img2]).squeeze(2)
-        print(f'Before Att2: {img.shape}\n')
+        img = torch.stack([image[0] for image in images_att]).squeeze(2)
+        # print(f'Before Att2: {img.shape}\n')
         ans, weights3 = self.att2(ques, img, img)
         return self.pred(ans)
 
@@ -70,9 +82,9 @@ if __name__ == '__main__':
     dl = DataLoader(ds, batch_size=1)
     # dct = ds[0]
     for dct in dl:
-        for key, val in dct.items():
-            print(f'{key}: {val.shape}', end = ' ')
-        print()
+        # for key, val in dct.items():
+            # print(f'{key}: {val.shape}', end = ' ')
+        # print()
         out = model(dct, dct['ques'])
     
-    # print(out.shape)
+    print(out.shape)
