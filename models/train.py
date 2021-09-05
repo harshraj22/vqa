@@ -20,6 +20,8 @@ batch_size = 10
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 model = MultiImageVQA(feat_dim, vocab_size, embed_size, n_attention_stacks, hidden_dim_img)
+criterian = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters())
 
 ds = MultiImageVQADataset()
 dl = DataLoader(ds, batch_size=2)
@@ -32,4 +34,6 @@ epoch = 0
 for epoch in tqdm(range(num_epochs), desc=f"on epoch {epoch}"):
     out = model(batch, batch['ques'])
     pred = torch.argmax(out.squeeze(1), dim=1)
-    print(f'Ans: {batch["ans"].detach().cpu().tolist()}, ques: {batch["ques"].shape}, out: {out.shape}, pred: {pred.detach().cpu().tolist()}')
+    print(out.squeeze(1), batch['ans'])
+    loss = criterian(pred, batch['ans'])
+    print(f' Ans: {batch["ans"].detach().cpu().tolist()}, ques: {batch["ques"].shape}, out: {out.shape}, pred: {pred.detach().cpu().tolist()}')
