@@ -27,10 +27,8 @@ class MultiImageVQA(nn.Module):
 
 
     def forward(self, img_dict, ques):
-        images = [value for key, value in img_dict.items() if key.startswith('img')]
-        # print('Num Images: ', len(images))
-        # img1 = img_dict['img1']
-        # img2 = img_dict['img2']
+
+        images = img_dict['images']
         images_enc = []
         for image in images:
             image = self.img_enc(image)
@@ -69,10 +67,10 @@ if __name__ == '__main__':
     hidden_dim_img = feat_dim
     batch_size = 10
 
-    img_dict = {
-        'img1': torch.randint(255, size=(2, 3, 448, 448)) / 255,
-        'img2': torch.randint(255, size=(2, 3, 448, 448)) / 255
-    }
+    # img_dict = {
+    #     'img1': torch.randint(255, size=(2, 3, 448, 448)) / 255,
+    #     'img2': torch.randint(255, size=(2, 3, 448, 448)) / 255
+    # }
 
     ques = torch.randint(1000, size=(2, 5))
     model = MultiImageVQA(feat_dim, vocab_size, embed_size, n_attention_stacks, hidden_dim_img)
