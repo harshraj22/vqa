@@ -1,5 +1,6 @@
 import torch 
 import torch.nn
+import random
 from torch.utils.data import Dataset, DataLoader
 
 
@@ -7,9 +8,8 @@ class MultiImageVQADataset(Dataset):
     def __init__(self):
         self.n_images = 3
 
-
     def __len__(self):
-        return 10
+        return 50
 
     def __getitem__(self, idx):
         dct = {
@@ -19,4 +19,5 @@ class MultiImageVQADataset(Dataset):
         batch_size, seq_len = 1, 5
         dct['ques'] = torch.randint(1000, size=(seq_len,))
         dct['ans'] = torch.randint(9000-2, size=(1,))
+        dct['true_img_index'] = random.randint(0, self.n_images-1)
         return dct

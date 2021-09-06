@@ -55,7 +55,8 @@ class MultiImageVQA(nn.Module):
         img = torch.stack([image[0] for image in images_att]).squeeze(2)
         # print(f'Before Att2: {img.shape}\n')
         ans, weights3 = self.att2(ques, img, img)
-        return self.pred(ans)
+        # print(f'Debug: ans: {ans.shape}, weights3: {weights3.squeeze(1).shape}')
+        return weights3.squeeze(1), self.pred(ans)
 
 
 if __name__ == '__main__':
@@ -83,6 +84,8 @@ if __name__ == '__main__':
         # for key, val in dct.items():
             # print(f'{key}: {val.shape}', end = ' ')
         # print()
-        out = model(dct, dct['ques'])
+        index, out = model(dct, dct['ques'])
+        # print(index)
+        # sys.exit(0)
     
     print(out.shape)
