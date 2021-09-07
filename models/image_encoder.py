@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models import vgg19
+from torchinfo import summary
 
 
 class ImageEncoder(nn.Module):
@@ -9,6 +10,8 @@ class ImageEncoder(nn.Module):
         super(ImageEncoder, self).__init__()
         self.out_dim = out_dim
         self.vgg = vgg19(pretrained=True)
+        # for params in self.vgg.parameters():
+        #     params.requires_grad = False
         self.vgg.avgpool = nn.Sequential()
         self.vgg.classifier = nn.Sequential()
         self.fc = nn.Linear(512, out_dim)
@@ -33,3 +36,5 @@ if __name__ == '__main__':
     inp = torch.rand((1, 3, 448, 448))
     out = model(inp)
     assert tuple(out.shape) == (1, 14 * 14, 250)
+    summary(model, input = inp)
+    print("this is debugger")

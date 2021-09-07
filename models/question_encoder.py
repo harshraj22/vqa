@@ -18,6 +18,7 @@ class QuestionEncoder(nn.Module):
         
         Args:
             x (N, seq_len): Tensor containing numbers corresponding to words of the sentence.
+            self.embed(x): (N, seq_len, embed_size)
         
         Returns:
             c (N, out_size): Feature vector corresponding to each question vector
