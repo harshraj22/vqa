@@ -6,6 +6,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import random
+from math import inf
 
 import sys
 sys.path.append("..")
@@ -63,7 +64,7 @@ dl_val = DataLoader(validation_, batch_size=batch_size, num_workers=4)
 
 # dl_train, dl_val = dl, dl
 
-epoch, train_losses, val_losses = 0, [], []
+epoch, train_losses, val_losses, best_val_loss = 0, [], [], inf
 for epoch in tqdm(range(num_epochs), desc=f"on epoch {epoch}"):
 
     for dataloader, phase in [(dl_train, 'train'),(dl_val, 'val')]:
@@ -100,11 +101,15 @@ for epoch in tqdm(range(num_epochs), desc=f"on epoch {epoch}"):
                 # val_losses.append()
                 scheduler.step(loss)
         
-        tqdm.write(f'phase: {phase}, loss: {phase_loss:.3f}, word_Loss: {phase_word_loss:.3f}, img_classification_loss: {phase_image_loss:.3f}')
+        tqdm.write(f'phase: {phase}, loss: {phase_loss / len(dataloader.dataset):.3f}, word_Loss: {phase_word_loss / len(dataloader.dataset):.3f}, img_classification_loss: {phase_image_loss / len(dataloader.dataset):.3f}')
         if phase == 'train':
             train_losses.append(phase_loss / len(dataloader.dataset))
         else:
             val_losses.append(phase_loss / len(dataloader.dataset))
+            if best_val_loss > phase_loss / len(dataloader.dataset):
+                best_val_loss = phase_loss / len(dataloader.dataset)
+                torch.save(model.state_dict(), 'weights.pth')
+            tqdm.write(f'Val Loss: {best_val_loss}, Saving weights....')
 
     # print(f' Ans: {batch["ans"].detach().cpu().tolist()}, ques: {batch["ques"].shape}, out: {out.shape}, pred: {pred.detach().cpu().tolist()}')
 
@@ -112,6 +117,7 @@ for epoch in tqdm(range(num_epochs), desc=f"on epoch {epoch}"):
     plt.clf()
     plt.plot(train_losses, color = 'r', label = 'train')
     plt.plot(val_losses, color = 'g', label = 'val')
+    plt.title(f'Dataset: {datasetLength}, lambda: {lambda_}')
     plt.legend()
     plt.xlabel('Epochs')
     plt.ylabel('Loss')

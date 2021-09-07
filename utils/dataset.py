@@ -47,7 +47,7 @@ class MultiImageVQADataset(Dataset):
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
     def __len__(self):
-        return self.length // 1000
+        return self.length // 50
 
     def __getitem__(self, idx):
 
