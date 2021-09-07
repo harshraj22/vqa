@@ -86,10 +86,10 @@ for epoch in tqdm(range(num_epochs), desc=f"on epoch {epoch}"):
             # print(attention_weights.shape, batch["true_img_index"].shape)
             img_classification_loss = criterian(attention_weights, batch['true_img_index'].squeeze(-1))
             # tqdm.write(f'wetmux ight: {attention_weights}')
-            loss = word_loss + lambda_*img_classification_loss #
-            phase_word_loss += word_loss.item()*len(batch)
-            phase_image_loss += img_classification_loss.item()*len(batch)
-            phase_loss += loss.item()*len(batch)
+            loss = word_loss + lambda_ * img_classification_loss #
+            phase_word_loss += word_loss.item() * len(batch['ans'])
+            phase_image_loss += img_classification_loss.item() * len(batch['ans'])
+            phase_loss += loss.item() * len(batch['ans'])
 
             if phase == 'train':
                 # train_losses.append(loss.detach().cpu().item())
@@ -103,7 +103,6 @@ for epoch in tqdm(range(num_epochs), desc=f"on epoch {epoch}"):
         tqdm.write(f'phase: {phase}, loss: {phase_loss:.3f}, word_Loss: {phase_word_loss:.3f}, img_classification_loss: {phase_image_loss:.3f}')
         if phase == 'train':
             train_losses.append(phase_loss / len(dataloader.dataset))
-            
         else:
             val_losses.append(phase_loss / len(dataloader.dataset))
 
