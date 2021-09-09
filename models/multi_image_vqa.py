@@ -9,6 +9,8 @@ from image_encoder import ImageEncoder
 from question_encoder import QuestionEncoder
 from utils.dataset import MultiImageVQADataset
 
+from torchinfo import summary
+
 
 class MultiImageVQA(nn.Module):
     def __init__(self, feat_dim, vocab_size, embed_size, n_attention_stacks, hidden_dim_img, n_images=2):
@@ -64,32 +66,37 @@ class MultiImageVQA(nn.Module):
 
 
 if __name__ == '__main__':
-    vocab_size = 9000 # from bert
+    num_epochs = 30
+    vocab_size = 30000 # from bert
     seq_len = 12 # from dataset
     feat_dim = 640 # from paper, the final vector vq, vi
     embed_size = 500 # from paper, dimention of embedding of each word
     n_attention_stacks = 2
     hidden_dim_img = feat_dim
-    batch_size = 10
+    batch_size = 32
+    lambda_ = 100
 
     # img_dict = {
     #     'img1': torch.randint(255, size=(2, 3, 448, 448)) / 255,
     #     'img2': torch.randint(255, size=(2, 3, 448, 448)) / 255
     # }
 
-    ques = torch.randint(1000, size=(2, 5))
+    # ques = torch.randint(1000, size=(2, 5))
     model = MultiImageVQA(feat_dim, vocab_size, embed_size, n_attention_stacks, hidden_dim_img)
 
     # out = model(img_dict, ques)
-    ds = MultiImageVQADataset()
+    ds = MultiImageVQADataset('/nfs_home/janhavi2021/clever/CLEVR_v1.0/questions/CLEVR_val_questions.json', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/test/images')
     dl = DataLoader(ds, batch_size=2)
     # dct = ds[0]
     for dct in dl:
-        # for key, val in dct.items():
-            # print(f'{key}: {val.shape}', end = ' ')
-        # print()
-        index, out = model(dct, dct['ques'])
-        # print(index)
-        # sys.exit(0)
+        summary(model, input_data=(dct, dct['ques']))
+        break
+    # for dct in dl:
+    #     # for key, val in dct.items():
+    #         # print(f'{key}: {val.shape}', end = ' ')
+    #     # print()
+    #     index, out = model(dct, dct['ques'])
+    #     # print(index)
+    #     # sys.exit(0)
     
-    print(out.shape)
+    # print(out.shape)
