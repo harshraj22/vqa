@@ -18,6 +18,9 @@ sys.path.append("..")
 from models.multi_image_vqa import MultiImageVQA
 from utils.dataset import MultiImageVQADataset
 
+import warnings
+warnings.filterwarnings('ignore')
+
 num_epochs = 30
 vocab_size = 30000 # from bert
 seq_len = 12 # from dataset
@@ -37,10 +40,10 @@ for param in model.parameters():
 model.eval()
 
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-ques = tokenizer.tokenize('What is the object ?')
+ques = tokenizer.tokenize('How are you ?')
 ques = tokenizer.convert_tokens_to_ids(ques)
 
-img_path = '/nfs_home/janhavi2021/textvqa/21069789141_876c38328b_o.jpg'
+img_path = '/nfs_home/janhavi2021/textvqa/20605099204_4fe191a2e8_o (1).jpg'
 img = np.array(Image.open(img_path).crop((0, 0, 448, 448)))
 img = np.moveaxis(img, -1, 0) / 255
 img = torch.from_numpy(img).float()
@@ -59,9 +62,10 @@ print('Ques: ', dct['ques'], type(dct['ques'][0]), type(dct['ques'][0][0]), dct[
 
 print('\n\n\n')
 # out.shape: (N, vocab_size)
-attention_weights, out = model(dct, ques)
+attention_weights, out = model(dct, dct['ques'])
 
 # assume N = 1
+print(out.squeeze(0), out.squeeze(0).shape)
 index = torch.argmax(out.squeeze(0))
 word = tokenizer.convert_ids_to_tokens([index])
 print(f'Generated word: {word}')
