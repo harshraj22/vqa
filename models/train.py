@@ -14,6 +14,9 @@ sys.path.append("..")
 from models.multi_image_vqa import MultiImageVQA
 from utils.dataset import MultiImageVQADataset
 
+import warnings
+warnings.filterwarnings('ignore')
+
 num_epochs = 30
 vocab_size = 30000 # from bert
 seq_len = 12 # from dataset
@@ -50,7 +53,7 @@ class Multi(Dataset):
         dct['true_img_index'] = 1 # random.randint(0, self.n_images-1)
         return dct
 
-ds = MultiImageVQADataset('/nfs_home/janhavi2021/clever/CLEVR_v1.0/questions/CLEVR_val_questions.json', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/test/images')
+ds = MultiImageVQADataset('/nfs_home/janhavi2021/vqa/models/cleaned.json', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/test/images')
 datasetLength = len(ds)
 
 print("Dataset Loaded. ", datasetLength)
