@@ -1,5 +1,6 @@
 # custom files
 weights*.pth
+*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
