@@ -27,7 +27,16 @@ class MultiImageVQA(nn.Module):
 
 
     def forward(self, img_dict, ques):
+        """Implements the forward pass for Multi-Image VQA
 
+        Args:
+            img_dict (dict): dict with the following keys.
+                images (N, num_image, 3, 448, 448): list containing the images in the form of tensors. Images of shape: 448, 448 as required by multi_image_vqa model
+            ques (N, seq_len): tensor representing the question
+
+        Returns:
+            (N, num_image), (N, vocab_len): Attention weights corresponding to final image selection, and a vocab-dimentional vector representing the generated answer.
+        """ 
         images = img_dict['images']
         images_enc = []
         for image in images:
@@ -43,19 +52,14 @@ class MultiImageVQA(nn.Module):
         # ques = torch.clamp(ques, min=-1, max=-0.5)
         
         # Try Normalizing
-        # print(f'\n\nBefore Attention: {img1.shape}, {img2.shape}, Ques: {ques.shape}, Image.max: {torch.max(img1)}, question.max: {torch.max(ques)}\n\n')
         images_att = []
         for image in images_enc:
             image, weight = self.att1(ques, image, image)
             images_att.append((image, weight))
-
-        # img1, weights1 = self.att1(ques, img1, img1)
-        # img2, weights2 = self.att1(ques, img2, img2)
         
         img = torch.stack([image[0] for image in images_att]).squeeze(2)
-        # print(f'Before Att2: {img.shape}\n')
         ans, weights3 = self.att2(ques, img, img)
-        # print(f'Debug: ans: {ans.shape}, weights3: {weights3.squeeze(1).shape}')
+
         return weights3.squeeze(1), self.pred(ans)
 
 

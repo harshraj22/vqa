@@ -11,9 +11,7 @@ import json
 from transformers import BertTokenizer, DistilBertTokenizer, BertTokenizerFast
 
 class MultiImageVQADataset(Dataset):
-    """
-    one image from clever and other 3 image from other.
-
+    """one image from clever and other 3 image from other.
     """
     def __init__(self, cleverTrainJson, cleverPath, tinyPath, randomImages=3, max_seq_len=30):
         # generating #randomImages extra images from Clever for each inx

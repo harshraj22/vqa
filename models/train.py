@@ -84,12 +84,13 @@ for epoch in tqdm(range(num_epochs), desc=f"on epoch {epoch}"):
                     attention_weights, out = model(batch, batch['ques'])
             else:
                 attention_weights, out = model(batch, batch['ques'])
-            # pred = torch.argmax(out.squeeze(1), dim=1)
-            # print('out: ', out.squeeze(1).shape, 'ans: ', batch['ans'].squeeze(-1).shape, batch['ans'].squeeze(-1).detach().cpu().tolist())
+            pred = torch.argmax(out.squeeze(1), dim=1)
+            print('out: ', out.squeeze(1).shape, 'ans: ', batch['ans'].squeeze(-1).shape, batch['ans'].squeeze(-1).detach().cpu().tolist())
             word_loss = criterian(out.squeeze(1), batch['ans'].squeeze(-1))
-            # print(attention_weights.shape, batch["true_img_index"].shape)
+            print(attention_weights.shape, batch["true_img_index"].shape)
             img_classification_loss = criterian(attention_weights, batch['true_img_index'].squeeze(-1))
-            # tqdm.write(f'wetmux ight: {attention_weights}')
+            tqdm.write(f'wetmux ight: {attention_weights}')
+            continue
             loss = word_loss + lambda_ * img_classification_loss #
             phase_word_loss += word_loss.item() * len(batch['ans'])
             phase_image_loss += img_classification_loss.item() * len(batch['ans'])
