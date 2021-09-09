@@ -109,7 +109,7 @@ for epoch in tqdm(range(num_epochs), desc=f"on epoch {epoch}"):
             if best_val_loss > phase_loss / len(dataloader.dataset):
                 best_val_loss = phase_loss / len(dataloader.dataset)
                 torch.save(model.state_dict(), 'weights.pth')
-            tqdm.write(f'Val Loss: {best_val_loss}, Saving weights....')
+            tqdm.write(f'Val Loss: {best_val_loss:.3f}, Saving weights....')
 
     # print(f' Ans: {batch["ans"].detach().cpu().tolist()}, ques: {batch["ques"].shape}, out: {out.shape}, pred: {pred.detach().cpu().tolist()}')
 
