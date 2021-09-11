@@ -131,6 +131,11 @@ class TestDataset(unittest.TestCase):
         dct = self.data[0]
         self.assertEqual(dct['ques'].dtype, torch.int64)
 
+    def test_img_index_dtype(self):
+        # image index should be torch.LongTensor
+        dct = self.data[0]
+        self.assertEqual(dct['true_img_index'].dtype, torch.int64)
+
 if __name__ == '__main__':
     unittest.main()
     # data = MultiImageVQADataset('/nfs_home/janhavi2021/clever/CLEVR_v1.0/questions/CLEVR_val_questions.json', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/test/images')
