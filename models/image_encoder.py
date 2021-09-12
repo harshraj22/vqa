@@ -10,8 +10,8 @@ class ImageEncoder(nn.Module):
         super(ImageEncoder, self).__init__()
         self.out_dim = out_dim
         self.vgg = vgg19(pretrained=True)
-        # for params in self.vgg.parameters():
-        #     params.requires_grad = False
+        for params in self.vgg.parameters():
+            params.requires_grad = False
         self.vgg.avgpool = nn.Sequential()
         self.vgg.classifier = nn.Sequential()
         self.fc = nn.Linear(512, out_dim)

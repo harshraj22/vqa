@@ -40,16 +40,30 @@ for param in model.parameters():
 model.eval()
 
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-ques = tokenizer.tokenize('How are you ?')
+ques = tokenizer.tokenize('what is the color of the shirt ?')
 ques = tokenizer.convert_tokens_to_ids(ques)
 
-img_path = '/nfs_home/janhavi2021/textvqa/20605099204_4fe191a2e8_o (1).jpg'
-img = np.array(Image.open(img_path).crop((0, 0, 448, 448)))
-img = np.moveaxis(img, -1, 0) / 255
-img = torch.from_numpy(img).float()
+def get_image(img_path = '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val/CLEVR_val_000000.png'):
+    #'/nfs_home/janhavi2021/textvqa/20605099204_4fe191a2e8_o (1).jpg'
+    # for images from CLEVER dataset, we need to convert
+    if 'CLEVR' in img_path:
+        img = np.array(Image.open(img_path).crop((0, 0, 448, 448)).convert('RGB'))
+    else:
+        img = np.array(Image.open(img_path).crop((0, 0, 448, 448)))
+    img = np.moveaxis(img, -1, 0) / 255
+    img = torch.from_numpy(img).float()
+    return img
+
+# img_paths = ['/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/val/images/val_5.JPEG', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/val/images/val_19.JPEG', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/val/images/val_38.JPEG', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val/CLEVR_val_000000.png']
+
+img_paths = [
+    '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/val/images/val_3.JPEG', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/val/images/val_12.JPEG', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/val/images/val_20.JPEG', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/val/images/val_36.JPEG'
+]
+
+print(f'Inside test: {torch.stack([get_image(x) for x in img_paths]).unsqueeze(0).shape}')
 
 dct = {
-    'images': torch.stack([img, img, img, img]).unsqueeze(0),
+    'images': torch.stack([get_image(x) for x in img_paths]).unsqueeze(0),
     'ques': torch.Tensor(ques).long().unsqueeze(0),
     'ans': torch.Tensor([0]).long(),
     'true_img_index': torch.Tensor([1]).long()
@@ -57,15 +71,16 @@ dct = {
 
 for key, val in dct.items():
     print(key, type(val))
-print('Ques: ', dct['ques'], type(dct['ques'][0]), type(dct['ques'][0][0]), dct['ques'].shape)
+# print('Ques: ', dct['ques'], type(dct['ques'][0]), type(dct['ques'][0][0]), dct['ques'].shape)
 
 
 print('\n\n\n')
 # out.shape: (N, vocab_size)
 attention_weights, out = model(dct, dct['ques'])
+print(f'Max weights belong to: {torch.argmax(attention_weights)}, {attention_weights}, Out: {out.shape}')
 
 # assume N = 1
-print(out.squeeze(0), out.squeeze(0).shape)
+# print(out.squeeze(0), out.squeeze(0).shape)
 index = torch.argmax(out.squeeze(0))
 word = tokenizer.convert_ids_to_tokens([index])
 print(f'Generated word: {word}')

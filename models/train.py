@@ -12,7 +12,7 @@ import sys
 sys.path.append("..")
 
 from models.multi_image_vqa import MultiImageVQA
-from utils.dataset import MultiImageVQADataset
+from utils.dataset import MultiImageVQADataset, arrange_batch
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -24,15 +24,14 @@ feat_dim = 640 # from paper, the final vector vq, vi
 embed_size = 500 # from paper, dimention of embedding of each word
 n_attention_stacks = 2
 hidden_dim_img = feat_dim
-batch_size = 32
-lambda_ = 100
+batch_size = 8
+lambda_ = 5
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 model = MultiImageVQA(feat_dim, vocab_size, embed_size, n_attention_stacks, hidden_dim_img)
 criterian = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters())
 scheduler = ReduceLROnPlateau(optimizer, verbose=True, patience=6)
-
 
 
 class Multi(Dataset):
@@ -58,8 +57,8 @@ datasetLength = len(ds)
 
 print("Dataset Loaded. ", datasetLength)
 train_, validation_ = torch.utils.data.random_split(ds, [int(0.9*datasetLength), len(ds) - int(0.9*datasetLength)], generator=torch.Generator().manual_seed(42))
-dl_train = DataLoader(train_, batch_size=batch_size, num_workers=4)
-dl_val = DataLoader(validation_, batch_size=batch_size, num_workers=4)
+dl_train = DataLoader(train_, batch_size=batch_size, num_workers=4, collate_fn=arrange_batch, shuffle=True)
+dl_val = DataLoader(validation_, batch_size=batch_size, num_workers=4, collate_fn=arrange_batch, shuffle=True)
 
 # batch = next(dl)
 # for inx, x in enumerate(dl):
@@ -84,15 +83,16 @@ for epoch in tqdm(range(num_epochs), desc=f"on epoch {epoch}"):
                     attention_weights, out = model(batch, batch['ques'])
             else:
                 attention_weights, out = model(batch, batch['ques'])
-            pred = torch.argmax(out.squeeze(1), dim=1)
-            print('out: ', out.squeeze(1).shape, 'ans: ', batch['ans'].squeeze(-1).shape, batch['ans'].squeeze(-1).detach().cpu().tolist())
-            word_loss = criterian(out.squeeze(1), batch['ans'].squeeze(-1))
-            print(attention_weights.shape, batch["true_img_index"].shape)
+            pred = torch.argmax(out, dim=1)
+            tqdm.write(f'pred: {pred.clone().detach().cpu().tolist()} {torch.argmax(attention_weights, dim=1).clone().detach().cpu().tolist()}\nAns:  {batch["ans"].squeeze(-1).clone().detach().cpu().tolist()} {batch["true_img_index"].squeeze(-1).clone().detach().cpu().tolist()}')
+            # print('out: ', out.shape, 'ans: ', batch['ans'].shape, batch['ans'].detach().cpu().tolist())
+            word_loss = criterian(out, batch['ans'].squeeze(-1))
+            #print(attention_weights.shape, batch["true_img_index"].shape)
             img_classification_loss = criterian(attention_weights, batch['true_img_index'].squeeze(-1))
-            tqdm.write(f'wetmux ight: {attention_weights}')
-            continue
-            loss = word_loss + lambda_ * img_classification_loss #
-            phase_word_loss += word_loss.item() * len(batch['ans'])
+            #tqdm.write(f'wetmux ight: {attention_weights}')
+            #continue
+            loss = lambda_ * word_loss + img_classification_loss #
+            phase_word_loss += lambda_ * word_loss.item() * len(batch['ans'])
             phase_image_loss += img_classification_loss.item() * len(batch['ans'])
             phase_loss += loss.item() * len(batch['ans'])
 
@@ -102,9 +102,10 @@ for epoch in tqdm(range(num_epochs), desc=f"on epoch {epoch}"):
                 optimizer.step()
             
             elif phase == 'val':
+                pass
                 # val_losses.append()
-                scheduler.step(loss)
-        
+                # scheduler.step(loss)
+
         tqdm.write(f'phase: {phase}, loss: {phase_loss / len(dataloader.dataset):.3f}, word_Loss: {phase_word_loss / len(dataloader.dataset):.3f}, img_classification_loss: {phase_image_loss / len(dataloader.dataset):.3f}')
         if phase == 'train':
             train_losses.append(phase_loss / len(dataloader.dataset))
@@ -113,6 +114,7 @@ for epoch in tqdm(range(num_epochs), desc=f"on epoch {epoch}"):
             if best_val_loss > phase_loss / len(dataloader.dataset):
                 best_val_loss = phase_loss / len(dataloader.dataset)
                 torch.save(model.state_dict(), 'weights.pth')
+            scheduler.step(phase_loss)
             tqdm.write(f'Val Loss: {best_val_loss:.3f}, Saving weights....')
 
     # print(f' Ans: {batch["ans"].detach().cpu().tolist()}, ques: {batch["ques"].shape}, out: {out.shape}, pred: {pred.detach().cpu().tolist()}')

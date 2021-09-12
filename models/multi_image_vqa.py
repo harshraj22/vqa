@@ -25,7 +25,13 @@ class MultiImageVQA(nn.Module):
         self.att1 = nn.MultiheadAttention(feat_dim, 1, batch_first=True)
         self.att2 = nn.MultiheadAttention(feat_dim, 1, batch_first=True)
 
-        self.pred = nn.Linear(feat_dim, vocab_size)
+        self.pred = nn.Sequential(
+            nn.Linear(feat_dim, 4000),
+            nn.Dropout(0.2),
+            nn.Linear(4000, 10000),
+            nn.Dropout(0.2),
+            nn.Linear(10000, self.vocab_size)
+        )
 
 
     def forward(self, img_dict, ques):
@@ -40,29 +46,56 @@ class MultiImageVQA(nn.Module):
             (N, num_image), (N, vocab_len): Attention weights corresponding to final image selection, and a vocab-dimentional vector representing the generated answer.
         """ 
         images = img_dict['images']
+        
         images_enc = []
-        for image in images:
-            image = self.img_enc(image)
-            image = torch.clamp(image, min=-1, max=-0.5)
-            images_enc.append(image)
+        for batch in images:
+            batch = self.img_enc(batch)
+            batch = torch.clamp(batch, min=-1, max=-0.5)
+            images_enc.append(batch)
+        # images_enc.shape: (N, num_images, 196, feat_dim)
 
-        # img1 = self.img_enc(img1)
-        # img1 = torch.clamp(img1, min=-1, max=-0.5)
-        # img2 = self.img_enc(img2)
-        # img2 = torch.clamp(img2, min=-1, max=-0.5)
-        ques = torch.unsqueeze(self.ques_enc(ques), dim=1)
-        # ques = torch.clamp(ques, min=-1, max=-0.5)
+        questions = torch.unsqueeze(self.ques_enc(ques), dim=1)
         
         # Try Normalizing
-        images_att = []
-        for image in images_enc:
-            image, weight = self.att1(ques, image, image)
-            images_att.append((image, weight))
-        
-        img = torch.stack([image[0] for image in images_att]).squeeze(2)
-        ans, weights3 = self.att2(ques, img, img)
 
-        return weights3.squeeze(1), self.pred(ans)
+        # for each batch, it stores num_images number of vectors representing the attention output of
+        # question, and the corresponding image from the batch
+        # len(images_att): batch_size, images_att[0].shape: (num_images, 1, feat_dim)
+        # print(f'Images_enc: len: {len(images_enc)}, shape: {images_enc[0].shape}')
+        images_att = []
+        for batch, ques in zip(images_enc, questions):
+            # for the current batch, find attention with each image and question vector,
+            # store this result. cur_batch[0].shape: (1, 1, num_features) & len(cur_batch): num_images
+            cur_batch, ques = [], ques.unsqueeze(0)
+            # ques.shape: (1, 1, feat_dim)
+            for image in batch:
+                image = image.unsqueeze(0)
+                # image.shape: (1, 196, feat_dim)
+                image, weights = self.att1(ques, image, image)
+                cur_batch.append(image)
+                
+            images_att.append(torch.cat(cur_batch, dim=0))
+
+
+        batch_features, batch_weights = [], []
+        for batch, ques in zip(images_att, questions):
+            image = batch 
+            ques = ques.unsqueeze(0)
+            
+            ans, weights = self.att2(ques, image, image)
+            batch_features.append(ans)
+            batch_weights.append(weights)
+
+        # img = torch.stack([image[0] for image in images_att]).squeeze(2)
+        # print(f'Pre: , org cat: {torch.cat([image[0] for image in images_att], dim=-2).shape} & Images_att: {images_att[0][0].shape} & {len(images_att)}, images_enc: {images_enc[0].shape}, ques: {ques.shape}')
+        # print(f'Before final: ques: {ques.shape}, img: {img.shape}')
+
+        batch_weights = torch.cat(batch_weights, dim=0).squeeze(1)
+        # batch_weights.shape: (N, num_images)
+        batch_features = torch.cat(batch_features, dim=0).squeeze(1)
+        # batch_features.shape: (N, feat_dim)
+
+        return batch_weights, self.pred(batch_features)
 
 
 if __name__ == '__main__':
@@ -90,6 +123,7 @@ if __name__ == '__main__':
     # dct = ds[0]
     for dct in dl:
         summary(model, input_data=(dct, dct['ques']))
+        # model(dct, dct['ques'])
         break
     # for dct in dl:
     #     # for key, val in dct.items():
