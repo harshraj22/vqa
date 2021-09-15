@@ -23,7 +23,10 @@ class MultiImageVQADataset(Dataset):
             data = json.load(f)
 
         self.questions = data["questions"] # 70l
+        random.shuffle(self.questions)
         self.length = len(self.questions)
+
+        self.possible_answers = ['6', 'yes', 'small', 'blue', 'brown', 'red', 'cyan', '1', '0', 'rubber', '7', 'no', 'purple', 'large', '5', 'green', '10', 'cube', '4', '9', '3', 'cylinder', 'metal', '2', 'gray', 'sphere', '8', 'yellow']
 
         self.tinyPath = tinyPath 
         self.tinyImages = os.listdir(self.tinyPath) 
@@ -67,9 +70,9 @@ class MultiImageVQADataset(Dataset):
 
         imageList.insert(trueImageIndex, originalImage)
 
-        batch_size, seq_len = 1, 5
+        _, seq_len = 1, 5
         dct = {}
-        dct['images'] = imageList
+        dct['images'] = torch.stack(imageList, dim=0)
 
         questokenized = self.tokenizer.tokenize(ques['question'])
         prefix = ['[PAD]' for i in range(self.max_seq_len - min(self.max_seq_len, len(questokenized)))]
@@ -79,9 +82,13 @@ class MultiImageVQADataset(Dataset):
         tokens = self.tokenizer.convert_tokens_to_ids(questokenized)
         dct['ques'] = torch.Tensor(tokens).long()
 
-        anstokenized = self.tokenizer.tokenize(ques['answer'])
-        tokens = self.tokenizer.convert_tokens_to_ids(anstokenized)
-        dct['ans'] = torch.Tensor([tokens[0]]).long() #torch.randint(9000-2, size=(1,))
+        # anstokenized = self.tokenizer.tokenize(ques['answer'])
+        # tokens = self.tokenizer.convert_tokens_to_ids(anstokenized)
+        # dct['ans'] = torch.Tensor([tokens[0]]).long() #torch.randint(9000-2, size=(1,))
+        if ques['answer'] in self.possible_answers:
+            dct['ans'] = torch.Tensor([self.possible_answers.index(ques['answer']) ]).long()
+        else:
+            dct['ans'] = torch.Tensor([len(self.possible_answers)])
 
         dct['true_img_index'] = torch.Tensor([trueImageIndex]).long()
         
@@ -136,9 +143,31 @@ class TestDataset(unittest.TestCase):
         dct = self.data[0]
         self.assertEqual(dct['true_img_index'].dtype, torch.int64)
 
+
+def arrange_batch(batch):
+    keys = batch[0].keys()
+    new_batch = {}
+
+    for key in keys:
+        new_batch[key] = torch.stack([batch_item[key] for batch_item in batch], dim=0)
+
+    # for key, val in new_batch.items():
+    #     if isinstance(val, list):
+    #         print(key, len(val), val[0].shape)
+    #     else:
+    #         print(key, val.shape)
+    return new_batch
+
 if __name__ == '__main__':
-    unittest.main()
-    # data = MultiImageVQADataset('/nfs_home/janhavi2021/clever/CLEVR_v1.0/questions/CLEVR_val_questions.json', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/test/images')
+    # unittest.main()
+    data = MultiImageVQADataset('/nfs_home/janhavi2021/vqa/models/cleaned.json', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/test/images')
+    dl = DataLoader(data, batch_size=2, collate_fn=arrange_batch)
+    for batch in dl:
+        # print(batch)
+        break
+        # for key, val in batch.items():
+        #     print(key, val.shape)
+
     # d = data.__getitem__(2)
     # print(d['images'][0].shape, len(d['images']))
     # print(d["ques"])
