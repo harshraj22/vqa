@@ -26,11 +26,11 @@ class MultiImageVQA(nn.Module):
         self.att2 = nn.MultiheadAttention(feat_dim, 1, batch_first=True)
 
         self.pred = nn.Sequential(
-            nn.Linear(feat_dim, 4000),
+            nn.Linear(feat_dim, 300),
             nn.Dropout(0.2),
-            nn.Linear(4000, 10000),
+            nn.Linear(300, 100),
             nn.Dropout(0.2),
-            nn.Linear(10000, self.vocab_size)
+            nn.Linear(100, 29)
         )
 
 
