@@ -13,12 +13,11 @@ from torchinfo import summary
 
 
 class MultiImageVQA(nn.Module):
-    def __init__(self, feat_dim, vocab_size, embed_size, n_attention_stacks, hidden_dim_img, n_images=2):
+    def __init__(self, feat_dim, vocab_size, embed_size, n_attention_stacks, hidden_dim_img):
         super(MultiImageVQA, self).__init__()
         self.feat_dim = feat_dim
         self.vocab_size = vocab_size
         self.embed_size = embed_size
-        self.n_images = n_images
 
         self.img_enc = ImageEncoder(feat_dim)
         self.ques_enc = QuestionEncoder(vocab_size, embed_size, feat_dim)
@@ -46,13 +45,20 @@ class MultiImageVQA(nn.Module):
             (N, num_image), (N, vocab_len): Attention weights corresponding to final image selection, and a vocab-dimentional vector representing the generated answer.
         """ 
         images = img_dict['images']
+        N, num_images, c, h, w = images.shape
         
         images_enc = []
-        for batch in images:
-            batch = self.img_enc(batch)
-            batch = torch.clamp(batch, min=-1, max=-0.5)
-            images_enc.append(batch)
+        # todo: change loop to N * num_image
+        images = images.view(N * num_images, c, h, w)
+        images = self.img_enc(images)
+        images = torch.clamp(images, min=-1, max=-0.5)
+        images_enc = images.view(N, num_images, 196, self.feat_dim)
+        # for batch in images:
+        #     batch = self.img_enc(batch)
+        #     batch = torch.clamp(batch, min=-1, max=-0.5)
+        #     images_enc.append(batch)
         # images_enc.shape: (N, num_images, 196, feat_dim)
+        assert len(images_enc) == N and tuple(images_enc[0].shape) == (num_images, 196, self.feat_dim), f"Shapes do not match after the feature extraction of images. Expected: {(N, num_images, 196, feat_dim)}, got: {images.shape}"
 
         questions = torch.unsqueeze(self.ques_enc(ques), dim=1)
         
@@ -76,6 +82,8 @@ class MultiImageVQA(nn.Module):
                 
             images_att.append(torch.cat(cur_batch, dim=0))
 
+        assert len(images_att) == N and tuple(images_att[0].shape) == (num_images, 1, self.feat_dim), f"shapes do not match after the first attention layer. Expected {(N, num_images, 1, self.feat_dim)}, got: {(len(images_att), images_att[0].shape)}"
+
 
         batch_features, batch_weights = [], []
         for batch, ques in zip(images_att, questions):
@@ -91,8 +99,10 @@ class MultiImageVQA(nn.Module):
         # print(f'Before final: ques: {ques.shape}, img: {img.shape}')
 
         batch_weights = torch.cat(batch_weights, dim=0).squeeze(1)
+        assert tuple(batch_weights.shape) == (N, num_images), "Batch weights shape do not match, "
         # batch_weights.shape: (N, num_images)
         batch_features = torch.cat(batch_features, dim=0).squeeze(1)
+        assert tuple(batch_features.shape) == (N, self.feat_dim), "Batch features shape do not match"
         # batch_features.shape: (N, feat_dim)
 
         return batch_weights, self.pred(batch_features)
