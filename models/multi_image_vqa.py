@@ -46,7 +46,9 @@ class MultiImageVQA(nn.Module):
         """ 
         images = img_dict['images']
         N, num_images, c, h, w = images.shape
-        
+
+        # --------------------------------- Part 1 ----------------------------------
+
         images_enc = []
         # todo: change loop to N * num_image
         images = images.view(N * num_images, c, h, w)
@@ -61,31 +63,47 @@ class MultiImageVQA(nn.Module):
         assert len(images_enc) == N and tuple(images_enc[0].shape) == (num_images, 196, self.feat_dim), f"Shapes do not match after the feature extraction of images. Expected: {(N, num_images, 196, feat_dim)}, got: {images.shape}"
 
         questions = torch.unsqueeze(self.ques_enc(ques), dim=1)
+        # questions.shape: (N, 1, feat_dim)
         
         # Try Normalizing
+        # --------------------------------- Part 2 ----------------------------------
 
         # for each batch, it stores num_images number of vectors representing the attention output of
         # question, and the corresponding image from the batch
         # len(images_att): batch_size, images_att[0].shape: (num_images, 1, feat_dim)
         # print(f'Images_enc: len: {len(images_enc)}, shape: {images_enc[0].shape}')
-        images_att = []
-        for batch, ques in zip(images_enc, questions):
-            # for the current batch, find attention with each image and question vector,
-            # store this result. cur_batch[0].shape: (1, 1, num_features) & len(cur_batch): num_images
-            cur_batch, ques = [], ques.unsqueeze(0)
-            # ques.shape: (1, 1, feat_dim)
-            for image in batch:
-                image = image.unsqueeze(0)
-                # image.shape: (1, 196, feat_dim)
-                image, weights = self.att1(ques, image, image)
-                cur_batch.append(image)
+
+        # images_att = []
+        # for batch, ques in zip(images_enc, questions):
+        #     # for the current batch, find attention with each image and question vector,
+        #     # store this result. cur_batch[0].shape: (1, 1, num_features) & len(cur_batch): num_images
+        #     cur_batch, ques = [], ques.unsqueeze(0)
+        #     # ques.shape: (1, 1, feat_dim)
+        #     for image in batch:
+        #         image = image.unsqueeze(0)
+        #         # image.shape: (1, 196, feat_dim)
+        #         image, weights = self.att1(ques, image, image)
+        #         cur_batch.append(image)
                 
-            images_att.append(torch.cat(cur_batch, dim=0))
+        #     images_att.append(torch.cat(cur_batch, dim=0))
+        images_att = []
+        print(f'batch_size {N} Shape of images_enc: {images_enc.shape}')
+        images_enc = images_enc.permute(1, 0, 2, 3)
+        print(f'Shape of images_enc after permute: {images_enc.shape}')
+        for batch_image in images_enc:
+            # loop num_images times
+            out, weights = self.att1(questions, batch_image, batch_image)
+            images_att.append(out)
+
+        images_att = torch.stack(images_att, dim=0)
+        print(f'Shape of images_att: {images_att.shape}')
+        images_att = images_att.permute(1, 0, 2, 3)
 
         assert len(images_att) == N and tuple(images_att[0].shape) == (num_images, 1, self.feat_dim), f"shapes do not match after the first attention layer. Expected {(N, num_images, 1, self.feat_dim)}, got: {(len(images_att), images_att[0].shape)}"
 
 
-        images_att = torch.cat(images_att, dim=0)
+        # --------------------------------- Part 3 ----------------------------------
+        # images_att = torch.cat(images_att, dim=0)
         # images_att.shape: (N, num_images, 1, feat_dim)
         # questions.shape: (N, 1, 1, feat_dim)
         images_att = images_att.squeeze(dim=2)
