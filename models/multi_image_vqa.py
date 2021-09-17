@@ -85,23 +85,32 @@ class MultiImageVQA(nn.Module):
         assert len(images_att) == N and tuple(images_att[0].shape) == (num_images, 1, self.feat_dim), f"shapes do not match after the first attention layer. Expected {(N, num_images, 1, self.feat_dim)}, got: {(len(images_att), images_att[0].shape)}"
 
 
-        batch_features, batch_weights = [], []
-        for batch, ques in zip(images_att, questions):
-            image = batch 
-            ques = ques.unsqueeze(0)
+        images_att = torch.cat(images_att, dim=0)
+        # images_att.shape: (N, num_images, 1, feat_dim)
+        # questions.shape: (N, 1, 1, feat_dim)
+        images_att = images_att.squeeze(dim=2)
+        questions = questions.squeeze(dim=2)
+
+        # batch_features, batch_weights = [], []
+        # for batch, ques in zip(images_att, questions):
+        #     image = batch 
+        #     ques = ques.unsqueeze(0)
             
-            ans, weights = self.att2(ques, image, image)
-            batch_features.append(ans)
-            batch_weights.append(weights)
+        #     ans, weights = self.att2(ques, image, image)
+        #     batch_features.append(ans)
+        #     batch_weights.append(weights)
+        batch_features, batch_weights = self.att2(questions, images_att, images_att)
 
         # img = torch.stack([image[0] for image in images_att]).squeeze(2)
         # print(f'Pre: , org cat: {torch.cat([image[0] for image in images_att], dim=-2).shape} & Images_att: {images_att[0][0].shape} & {len(images_att)}, images_enc: {images_enc[0].shape}, ques: {ques.shape}')
         # print(f'Before final: ques: {ques.shape}, img: {img.shape}')
 
-        batch_weights = torch.cat(batch_weights, dim=0).squeeze(1)
+        # batch_weights = torch.cat(batch_weights, dim=0).squeeze(1)
+        batch_weights = batch_weights.squeeze(1)
         assert tuple(batch_weights.shape) == (N, num_images), "Batch weights shape do not match, "
         # batch_weights.shape: (N, num_images)
-        batch_features = torch.cat(batch_features, dim=0).squeeze(1)
+        # batch_features = torch.cat(batch_features, dim=0).squeeze(1)
+        batch_features = batch_features.squeeze(1)
         assert tuple(batch_features.shape) == (N, self.feat_dim), "Batch features shape do not match"
         # batch_features.shape: (N, feat_dim)
 
