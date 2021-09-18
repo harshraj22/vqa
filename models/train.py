@@ -15,6 +15,7 @@ sys.path.append("..")
 
 from models.multi_image_vqa import MultiImageVQA
 from utils.dataset import MultiImageVQADataset, arrange_batch
+from utils.glove_embeddings import Glove
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -23,7 +24,7 @@ num_epochs = 30
 vocab_size = 30000 # from bert
 seq_len = 12 # from dataset
 feat_dim = 640 # from paper, the final vector vq, vi
-embed_size = 500 # from paper, dimention of embedding of each word
+embed_size = 300 # from paper, dimention of embedding of each word
 n_attention_stacks = 2
 hidden_dim_img = feat_dim
 batch_size = 40
@@ -50,7 +51,7 @@ class Multi(Dataset):
         dct['true_img_index'] = 1 # random.randint(0, self.n_images-1)
         return dct
 
-ds = MultiImageVQADataset('/nfs_home/janhavi2021/vqa/models/cleaned.json', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/test/images')
+ds = MultiImageVQADataset('/nfs_home/janhavi2021/vqa/models/cleaned.json', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/test/images', Glove(max_words=5))
 datasetLength = len(ds)
 
 # answer_tokens = ds.tokenizer.tokenize(answers)
@@ -96,9 +97,9 @@ for epoch in tqdm(range(num_epochs), desc=f"on epoch {epoch}"):
             optimizer.zero_grad()
             if phase == 'val':
                 with torch.no_grad():
-                    attention_weights, out = model(batch, batch['ques'])
+                    attention_weights, out = model(batch, batch['ques_embed'])
             else:
-                attention_weights, out = model(batch, batch['ques'])
+                attention_weights, out = model(batch, batch['ques_embed'])
             pred = torch.argmax(out, dim=1)
             tqdm.write(f'pred: {pred.clone().detach().cpu().tolist()} {torch.argmax(attention_weights, dim=1).clone().detach().cpu().tolist()}\nAns:  {batch["ans"].squeeze(-1).clone().detach().cpu().tolist()} {batch["true_img_index"].squeeze(-1).clone().detach().cpu().tolist()}')
             # print('out: ', out.shape, 'ans: ', batch['ans'].shape, batch['ans'].detach().cpu().tolist())

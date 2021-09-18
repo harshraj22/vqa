@@ -8,6 +8,7 @@ sys.path.append("..")
 from image_encoder import ImageEncoder
 from question_encoder import QuestionEncoder
 from utils.dataset import MultiImageVQADataset
+from utils.glove_embeddings import Glove
 
 from torchinfo import summary
 
@@ -140,7 +141,7 @@ if __name__ == '__main__':
     vocab_size = 30000 # from bert
     seq_len = 12 # from dataset
     feat_dim = 640 # from paper, the final vector vq, vi
-    embed_size = 500 # from paper, dimention of embedding of each word
+    embed_size = 300 # from paper, dimention of embedding of each word
     n_attention_stacks = 2
     hidden_dim_img = feat_dim
     batch_size = 32
@@ -155,11 +156,11 @@ if __name__ == '__main__':
     model = MultiImageVQA(feat_dim, vocab_size, embed_size, n_attention_stacks, hidden_dim_img)
 
     # out = model(img_dict, ques)
-    ds = MultiImageVQADataset('/nfs_home/janhavi2021/clever/CLEVR_v1.0/questions/CLEVR_val_questions.json', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/test/images')
+    ds = MultiImageVQADataset('/nfs_home/janhavi2021/clever/CLEVR_v1.0/questions/CLEVR_val_questions.json', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/test/images', Glove(max_words=5))
     dl = DataLoader(ds, batch_size=2)
     # dct = ds[0]
     for dct in dl:
-        summary(model, input_data=(dct, dct['ques']))
+        summary(model, input_data=(dct, dct['ques_embed']))
         # model(dct, dct['ques'])
         break
     # for dct in dl:

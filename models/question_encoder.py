@@ -17,13 +17,14 @@ class QuestionEncoder(nn.Module):
         """Implements the class to encode the questions into feature vectors. Uses embeddings and LSTMs for the same
         
         Args:
-            x (N, seq_len): Tensor containing numbers corresponding to words of the sentence.
+            x (N, seq_len, embed_size): Tensor containing numbers corresponding to words of the sentence.
             self.embed(x): (N, seq_len, embed_size)
         
         Returns:
             c (N, out_size): Feature vector corresponding to each question vector
         """
-        output, (h, c) = self.lstm(self.embed(x))
+        # output, (h, c) = self.lstm(self.embed(x))
+        output, (h, c) = self.lstm(x)
         return torch.squeeze(h, dim=0)
 
 
