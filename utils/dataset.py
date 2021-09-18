@@ -10,21 +10,23 @@ import numpy as np
 import json
 from transformers import BertTokenizer, DistilBertTokenizer, BertTokenizerFast
 import unittest
+# from glove_embeddings import Glove
 
 class MultiImageVQADataset(Dataset):
     """one image from clever and other 3 image from other.
     """
-    def __init__(self, cleverTrainJson, cleverPath, tinyPath, randomImages=3, max_seq_len=30):
+    def __init__(self, cleverTrainJson, cleverPath, tinyPath, glove, randomImages=3, max_seq_len=30):
         # generating #randomImages extra images from Clever for each inx
         self.cleverPath = cleverPath
         self.max_seq_len = max_seq_len
+        self.glove = glove
 
         with open(cleverTrainJson) as f:
             data = json.load(f)
 
         self.questions = data["questions"] # 70l
         random.shuffle(self.questions)
-        self.length = len(self.questions)
+        self.length = len(self.questions) // 400
 
         self.possible_answers = ['6', 'yes', 'small', 'blue', 'brown', 'red', 'cyan', '1', '0', 'rubber', '7', 'no', 'purple', 'large', '5', 'green', '10', 'cube', '4', '9', '3', 'cylinder', 'metal', '2', 'gray', 'sphere', '8', 'yellow']
 
@@ -49,7 +51,7 @@ class MultiImageVQADataset(Dataset):
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
     def __len__(self):
-        return self.length // 50
+        return self.length # // 500
 
     def __getitem__(self, idx):
 
@@ -79,8 +81,11 @@ class MultiImageVQADataset(Dataset):
         prefix = ' '.join(prefix)
         questokenized = self.tokenizer.tokenize(ques['question'] + prefix)[:self.max_seq_len] 
 
-        tokens = self.tokenizer.convert_tokens_to_ids(questokenized)
-        dct['ques'] = torch.Tensor(tokens).long()
+        # word_ids = self.tokenizer.convert_tokens_to_ids(questokenized)
+        word_ids = [self.glove.word_to_index(word) for word in self.tokenizer.convert_tokens_to_ids(questokenized)]
+        dct['ques'] = torch.Tensor(word_ids).long()
+
+        dct['ques_embed'] = torch.tensor([self.glove.index_to_embeddings(ids) for ids in word_ids])
 
         # anstokenized = self.tokenizer.tokenize(ques['answer'])
         # tokens = self.tokenizer.convert_tokens_to_ids(anstokenized)
@@ -100,7 +105,7 @@ class TestDataset(unittest.TestCase):
     def setUpClass(self):
         self.num_random_images = 3
         print(f'Creating the dataset......')
-        self.data = MultiImageVQADataset('/nfs_home/janhavi2021/clever/CLEVR_v1.0/questions/CLEVR_val_questions.json', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/test/images', randomImages=self.num_random_images)
+        self.data = MultiImageVQADataset('/nfs_home/janhavi2021/clever/CLEVR_v1.0/questions/CLEVR_val_questions.json', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/test/images', Glove(), randomImages=self.num_random_images)
         print(f'Created the dataset....')
 
     def test_dct_len(self):
@@ -160,7 +165,7 @@ def arrange_batch(batch):
 
 if __name__ == '__main__':
     # unittest.main()
-    data = MultiImageVQADataset('/nfs_home/janhavi2021/vqa/models/cleaned.json', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/test/images')
+    data = MultiImageVQADataset('/nfs_home/janhavi2021/vqa/models/cleaned.json', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/test/images', Glove())
     dl = DataLoader(data, batch_size=2, collate_fn=arrange_batch)
     for batch in dl:
         # print(batch)
