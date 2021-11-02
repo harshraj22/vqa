@@ -8,7 +8,6 @@ sys.path.append("..")
 from image_encoder import ImageEncoder
 from question_encoder import QuestionEncoder
 from utils.dataset import MultiImageVQADataset
-from utils.glove_embeddings import Glove
 
 from torchinfo import summary
 
@@ -20,18 +19,40 @@ class MultiImageVQA(nn.Module):
         self.vocab_size = vocab_size
         self.embed_size = embed_size
 
-        self.img_enc = ImageEncoder(feat_dim)
+        self.img_enc = ImageEncoder(feat_dim, trainable=False)
         self.ques_enc = QuestionEncoder(vocab_size, embed_size, feat_dim)
         self.att1 = nn.MultiheadAttention(feat_dim, 1, batch_first=True)
         self.att2 = nn.MultiheadAttention(feat_dim, 1, batch_first=True)
 
+        self.rcnn_feats = nn.Sequential(
+            nn.Linear(2048, 1024),
+            nn.BatchNorm2d(4),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(1024, feat_dim),
+            nn.BatchNorm2d(4),
+            nn.ReLU(),
+            nn.Dropout(0.1)        
+        )
+
         self.pred = nn.Sequential(
-            nn.Linear(feat_dim, 300),
+            nn.Linear(feat_dim, 300), # 640 -> 300
+            nn.BatchNorm1d(300),
+            nn.ReLU(),
             nn.Dropout(0.2),
             nn.Linear(300, 100),
+            nn.BatchNorm1d(100),
+            nn.ReLU(),
             nn.Dropout(0.2),
             nn.Linear(100, 29)
         )
+        # self.pred = nn.Sequential(
+        #     nn.Linear(feat_dim, 1000),
+        #     nn.Dropout(0.2),
+        #     nn.Linear(1000, 2000),
+        #     nn.Dropout(0.2),
+        #     nn.Linear(2000, 3410)
+        # )
 
 
     def forward(self, img_dict, ques):
@@ -40,7 +61,7 @@ class MultiImageVQA(nn.Module):
         Args:
             img_dict (dict): dict with the following keys.
                 images (N, num_image, 3, 448, 448): list containing the images in the form of tensors. Images of shape: 448, 448 as required by multi_image_vqa model
-            ques (N, seq_len): tensor representing the question
+            ques (N, seq_len, embed_size): tensor representing the question features
 
         Returns:
             (N, num_image), (N, vocab_len): Attention weights corresponding to final image selection, and a vocab-dimentional vector representing the generated answer.
@@ -48,23 +69,31 @@ class MultiImageVQA(nn.Module):
         images = img_dict['images']
         N, num_images, c, h, w = images.shape
 
+        # --------------------------------- Part 0 ---------------------------------
+        # image_rcnn_feats.shape: N, num_images, 30, feat_dim
+        image_rcnn_feats = self.rcnn_feats(img_dict['image_features_list'])
+        assert tuple(image_rcnn_feats.shape) == (N, num_images, 30, self.feat_dim), f"Shapes of image features do not match, expected {(N, num_images, 30, self.feat_dim)}, got {image_rcnn_feats.shape}"
+
         # --------------------------------- Part 1 ----------------------------------
 
-        images_enc = []
+        # images_enc = []
         # todo: change loop to N * num_image
         images = images.view(N * num_images, c, h, w)
         images = self.img_enc(images)
-        images = torch.clamp(images, min=-1, max=-0.5)
+        # images = torch.clamp(images, min=-1, max=-0.5)
         images_enc = images.view(N, num_images, 196, self.feat_dim)
         # for batch in images:
         #     batch = self.img_enc(batch)
         #     batch = torch.clamp(batch, min=-1, max=-0.5)
         #     images_enc.append(batch)
         # images_enc.shape: (N, num_images, 196, feat_dim)
-        assert len(images_enc) == N and tuple(images_enc[0].shape) == (num_images, 196, self.feat_dim), f"Shapes do not match after the feature extraction of images. Expected: {(N, num_images, 196, feat_dim)}, got: {images.shape}"
-
         questions = torch.unsqueeze(self.ques_enc(ques), dim=1)
         # questions.shape: (N, 1, feat_dim)
+
+        images_enc = torch.cat([images_enc, image_rcnn_feats], dim=2)
+        # 226 = 296 + 30
+        assert tuple(images_enc.shape) == (N, num_images, 226, self.feat_dim), f"Shapes do not match after the feature extraction of images. Expected: {(N, num_images, 226, feat_dim)}, got: {images.shape}"
+
         
         # Try Normalizing
         # --------------------------------- Part 2 ----------------------------------
@@ -88,16 +117,16 @@ class MultiImageVQA(nn.Module):
                 
         #     images_att.append(torch.cat(cur_batch, dim=0))
         images_att = []
-        print(f'batch_size {N} Shape of images_enc: {images_enc.shape}')
+        # print(f'batch_size {N} Shape of images_enc: {images_enc.shape}')
         images_enc = images_enc.permute(1, 0, 2, 3)
-        print(f'Shape of images_enc after permute: {images_enc.shape}')
+        # print(f'Shape of images_enc after permute: {images_enc.shape}')
         for batch_image in images_enc:
             # loop num_images times
             out, weights = self.att1(questions, batch_image, batch_image)
             images_att.append(out)
 
         images_att = torch.stack(images_att, dim=0)
-        print(f'Shape of images_att: {images_att.shape}')
+        # print(f'Shape of images_att: {images_att.shape}')
         images_att = images_att.permute(1, 0, 2, 3)
 
         assert len(images_att) == N and tuple(images_att[0].shape) == (num_images, 1, self.feat_dim), f"shapes do not match after the first attention layer. Expected {(N, num_images, 1, self.feat_dim)}, got: {(len(images_att), images_att[0].shape)}"
@@ -141,7 +170,7 @@ if __name__ == '__main__':
     vocab_size = 30000 # from bert
     seq_len = 12 # from dataset
     feat_dim = 640 # from paper, the final vector vq, vi
-    embed_size = 300 # from paper, dimention of embedding of each word
+    embed_size = 768 # from paper, dimention of embedding of each word
     n_attention_stacks = 2
     hidden_dim_img = feat_dim
     batch_size = 32
@@ -156,11 +185,11 @@ if __name__ == '__main__':
     model = MultiImageVQA(feat_dim, vocab_size, embed_size, n_attention_stacks, hidden_dim_img)
 
     # out = model(img_dict, ques)
-    ds = MultiImageVQADataset('/nfs_home/janhavi2021/clever/CLEVR_v1.0/questions/CLEVR_val_questions.json', '/nfs_home/janhavi2021/clever/CLEVR_v1.0/images/val', '/nfs_home/janhavi2021/Tiny/tiny-imagenet-200/test/images', Glove(max_words=5))
+    ds = MultiImageVQADataset('/home/prabhu/CLEVR_v1.0/questions/questions/CLEVR_val_questions.json', '/home/prabhu/CLEVR_v1.0/images/val', '/home/prabhu/Tiny/tiny-imagenet-200/test/images')
     dl = DataLoader(ds, batch_size=2)
     # dct = ds[0]
     for dct in dl:
-        summary(model, input_data=(dct, dct['ques_embed']))
+        summary(model, input_data=(dct, dct['ques_features']))
         # model(dct, dct['ques'])
         break
     # for dct in dl:

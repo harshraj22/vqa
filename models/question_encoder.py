@@ -10,20 +10,22 @@ class QuestionEncoder(nn.Module):
         self.embed_size = embed_size
         self.out_size = out_size
 
-        self.embed = nn.Embedding(self.vocab_size, self.embed_size)
+        # self.embed = nn.Embedding(self.vocab_size, self.embed_size)
         self.lstm = nn.LSTM(self.embed_size, self.out_size, batch_first=True)
 
     def forward(self, x):
         """Implements the class to encode the questions into feature vectors. Uses embeddings and LSTMs for the same
         
         Args:
-            x (N, seq_len, embed_size): Tensor containing numbers corresponding to words of the sentence.
+            x (N, seq_len, embed_size): Tensor containing features corresponding to words of the sentence.
             self.embed(x): (N, seq_len, embed_size)
         
         Returns:
             c (N, out_size): Feature vector corresponding to each question vector
         """
-        # output, (h, c) = self.lstm(self.embed(x))
+        # print(x.shape, self.embed_size)
+        # exit(0)
+        assert self.embed_size == x.shape[-1], f"Embeddings corresponding to questions do not match. expected {self.embed_size}, got {x.shape}"
         output, (h, c) = self.lstm(x)
         return torch.squeeze(h, dim=0)
 
