@@ -1,4 +1,5 @@
 # Multi-Image vqa
+@authors: [Akhilesh](https://github.com/akhileshkb), [Janhavi](https://github.com/JanhaviDadhania), [Harsh](https://github.com/harshraj22)
 
 - Paper summary, Ideas tried and their corresponding results: on [wiki](https://github.com/harshraj22/vqa/wiki)
 - Other discussions: on [discussions](https://github.com/harshraj22/vqa/discussions)
