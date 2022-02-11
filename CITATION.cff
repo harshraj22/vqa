@@ -1,0 +1,20 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Multi Image VQA
+message: 'If you use this software, please cite it as below.'
+type: software
+authors:
+  - given-names: Akhilesh
+    name-particle: Akhilesh
+    name-suffix: Bhardwaj
+    email: 180010009@iitdh.ac.in
+  - given-names: Janhavi
+    name-particle: Janhavi
+    name-suffix: Dadhania
+    email: 180010012@iitdh.ac.in
+  - given-names: Harsh
+    name-particle: Harsh
+    name-suffix: Raj
+    email: 180010017@iitdh.ac.in
